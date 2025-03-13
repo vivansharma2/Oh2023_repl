@@ -46,7 +46,8 @@ p1 <- ggplot(df %>% filter(tag_time == 1)) +
   scale_x_continuous(limits = c(5, 65)) +
   scale_y_continuous(limits = c(0, 1)) +
   labs(title = "Identity tasks", x = "Time in minutes", y = "Take-up rate") +
-  theme_minimal(base_size = 16)
+  theme_minimal(base_size = 16) +
+  theme(plot.title = element_text(hjust = 0.5))  
 
 # Paired control tasks plot (p2)
 p2 <- ggplot(df %>% filter(tag_time == 1)) +
@@ -57,7 +58,8 @@ p2 <- ggplot(df %>% filter(tag_time == 1)) +
   scale_x_continuous(limits = c(5, 65)) +
   scale_y_continuous(limits = c(0, 1)) +
   labs(title = "Paired control tasks", x = "Time in minutes", y = "Take-up rate") +
-  theme_minimal(base_size = 16)
+  theme_minimal(base_size = 16) +
+  theme(plot.title = element_text(hjust = 0.5))  
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
   #		Figure 4: Willingness to switch to working on extra tasks - Panel B
@@ -72,27 +74,70 @@ df <- df %>%
       minwage_imp_v2 == 100 ~ 22,
       minwage_imp_v2 > 100 & minwage_imp_v2 < 200 ~ 24,
       TRUE ~ minwage_imp_v2  
-    )
+  )
 )
 
-# Plot - FIX LABELS
-# Identity tasks histogram (p3)
-p3 <- ggplot(df %>% filter(tag_pidtasktime & timecat == 1 & identity == 1), aes(x = minwage_imp_v2)) +
-  geom_bar(aes(y = ..prop..), fill = "green", color = "darkgreen", width = 0.8) +
+minwage_labels <- c(
+  "0" = "0", "1" = "30", "2" = "60", "3" = "90", "4" = "120", 
+  "6" = "180", "8" = "240", "10" = "300", "13" = "900", 
+  "16" = "1500", "22" = "3K", "24" = ">3K"
+)
+
+# Ref. dataset
+all_values <- tibble(minwage_imp_v2 = 0:24)
+
+# Frequencies
+dfc_iden1 <- df %>%
+  filter(tag_pidtasktime & timecat == 1 & identity == 1) %>%
+  count(minwage_imp_v2) %>%
+  right_join(all_values, by = "minwage_imp_v2") %>%
+  mutate(n = replace_na(n, 0))  
+
+dfc_iden1 <- dfc_iden1 %>%
+  mutate(minwage_imp_v2_label = factor(as.character(minwage_imp_v2), 
+                                       levels = names(minwage_labels), 
+                                       labels = minwage_labels))
+# Remove NAs 
+dfc_iden1 <- dfc_iden1 %>% filter(!is.na(minwage_imp_v2_label)) %>% droplevels()
+
+# Plot 
+# Identity tasks (p3)
+p3 <- ggplot(dfc_iden1, aes(x = minwage_imp_v2_label, y = n / sum(n))) +  
+  geom_bar(stat = "identity", fill = "green", color = "darkgreen", width = 0.8) +
   scale_y_continuous(labels = scales::percent_format(), limits = c(0, 0.45)) +
-  labs(title = "Identity tasks", x = "Minimum additional wage", y = "Share of workers") +
-  theme_minimal(base_size = 16)
+  labs(title = "Identity tasks", 
+       x = "Minimum additional wage", 
+       y = "Share of workers") +
+  theme_minimal(base_size = 16) +
+  theme(plot.title = element_text(hjust = 0.5))  
+                                
 
-# Paired control tasks histogram (p4)
-p4 <- ggplot(df %>% filter(tag_pidtask & timecat == 1 & pairedcont == 1), aes(x = minwage_imp_v2)) +
-  geom_bar(aes(y = ..prop..), fill = "blue", color = "darkblue", width = 0.8) +
+# Frequencies
+dfc_iden2 <- df %>%
+  filter(tag_pidtasktime & timecat == 1 & pairedcont == 1) %>%
+  count(minwage_imp_v2) %>%
+  right_join(all_values, by = "minwage_imp_v2") %>%
+  mutate(n = replace_na(n, 0))  
+
+dfc_iden2 <- dfc_iden2 %>%
+  mutate(minwage_imp_v2_label = factor(as.character(minwage_imp_v2), 
+                                       levels = names(minwage_labels), 
+                                       labels = minwage_labels))
+# Remove NAs 
+dfc_iden2 <- dfc_iden2 %>% filter(!is.na(minwage_imp_v2_label)) %>% droplevels()
+
+# Paired control tasks (p4)
+p4 <- ggplot(dfc_iden2, aes(x = minwage_imp_v2_label, y = n / sum(n))) +  
+  geom_bar(stat = "identity", fill = "blue", color = "darkblue", width = 0.8) +
   scale_y_continuous(labels = scales::percent_format(), limits = c(0, 0.45)) +
-  labs(title = "Paired control tasks", x = "Minimum additional wage", y = "Share of workers") +
-  theme_minimal(base_size = 16)
+  labs(title = "Identity tasks", 
+       x = "Minimum additional wage", 
+       y = "Share of workers") +
+  theme_minimal(base_size = 16) +
+  theme(plot.title = element_text(hjust = 0.5))  
 
-cplot<- (p1 + p2) / (p3 + p4)
-
-ggsave(file.path(output, "Figure4.png"), plot = cplot, width = 16, height = 8)
+cplot <- (p1 + p2) / (p3 + p4) 
+ggsave(file.path(output, "Figure4.png"), plot = cplot, width = 16, height = 12)
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
   #		Table 4: Caste inconsistency and refusal of all offers involving a task
